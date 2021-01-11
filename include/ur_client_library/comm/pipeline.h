@@ -366,8 +366,8 @@ public:
    */
   void stop()
   {
-    if (!running_)
-      return;
+    // Try to stop running even if running_=false already, since this is also used
+    // (where running gets false in advance) in destructor
 
     URCL_LOG_DEBUG("Stopping pipeline! <%s>", name_.c_str());
 
