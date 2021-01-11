@@ -31,6 +31,7 @@ add_library(urcl SHARED
     src/rtde/text_message.cpp
     src/rtde/rtde_client.cpp
     src/ur/ur_driver.cpp
+    src/ur/ur_driver_low_bandwidth.cpp
     src/ur/calibration_checker.cpp
     src/ur/dashboard_client.cpp
     src/ur/tool_communication.cpp
