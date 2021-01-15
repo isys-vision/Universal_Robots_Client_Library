@@ -99,6 +99,8 @@ public:
    * \returns Success of the write
    */
   bool write(const uint8_t* buf, size_t buf_len, size_t& written);
+
+  void closeSocket();
 };
 }  // namespace comm
 }  // namespace urcl

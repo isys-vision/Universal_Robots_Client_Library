@@ -37,7 +37,7 @@ URServer::URServer(int port) : port_(port)
 
 URServer::~URServer()
 {
-  TCPSocket::close();
+  closeSocket();
 }
 
 std::string URServer::getIP()
@@ -91,7 +91,7 @@ bool URServer::accept()
   while ((client_fd = ::accept(getSocketFD(), &addr, &addr_len)) == -1)
   {
     LOG_ERROR("Accepting socket connection failed. (errno: %d)", errno);
-    if (retry++ >= 5)
+    if (retry++ >= 5 || errno == EINVAL)
       return false;
   }
 
@@ -108,6 +108,12 @@ void URServer::disconnectClient()
 bool URServer::write(const uint8_t* buf, size_t buf_len, size_t& written)
 {
   return client_.write(buf, buf_len, written);
+}
+
+void URServer::closeSocket()
+{
+  disconnectClient();
+  TCPSocket::close();
 }
 
 bool URServer::readLine(char* buffer, size_t buf_len)

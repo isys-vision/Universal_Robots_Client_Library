@@ -33,18 +33,23 @@ namespace rtde_interface
 {
 bool TextMessage::parseWith(comm::BinParser& bp)
 {
-  if (protocol_version_ == 2)
-  {
-    bp.parse(message_length_);
-    bp.parse(message_, message_length_);
-    bp.parse(source_length_);
-    bp.parse(source_, source_length_);
-    bp.parse(warning_level_);
-  }
-  else if (protocol_version_ == 1)
-  {
-    bp.parse(message_type_);
-    bp.parseRemainder(message_);
+  try {
+    if (protocol_version_ == 2)
+    {
+      bp.parse(message_length_);
+      bp.parse(message_, message_length_);
+      bp.parse(source_length_);
+      bp.parse(source_, source_length_);
+      bp.parse(warning_level_);
+    }
+    else if (protocol_version_ == 1)
+    {
+      bp.parse(message_type_);
+      bp.parseRemainder(message_);
+    }
+  } catch (const UrException& e) {
+    LOG_ERROR("Parsing text msg failed: <%s>", e.what());
+    return false;
   }
 
   return true;

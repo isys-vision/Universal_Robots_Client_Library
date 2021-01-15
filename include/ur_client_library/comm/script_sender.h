@@ -44,6 +44,21 @@ class ScriptSender
 {
 public:
   ScriptSender() = delete;
+  ~ScriptSender()
+  {
+    if (!running_)
+      return;
+
+    running_ = false;
+    server_.closeSocket();
+
+    if (script_thread_.joinable())
+    {
+      script_thread_.join();
+    }
+    LOG_ERROR("Stopping script sender finished");
+  }
+
   /*!
    * \brief Creates a ScriptSender object, including a new URServer and not yet started thread.
    *
@@ -69,25 +84,28 @@ public:
 private:
   URServer server_;
   std::thread script_thread_;
+  std::atomic<bool> running_ { true };
   std::string program_;
 
   const std::string PROGRAM_REQUEST_ = std::string("request_program\n");
 
   void runScriptSender()
   {
-    while (true)
+    while (running_)
     {
-      if (!server_.accept())
+      if (server_.accept())
       {
-        throw std::runtime_error("Failed to accept robot connection");
+        if (requestRead())
+        {
+          LOG_INFO("Robot requested program");
+          sendProgram();
+        }
+        server_.disconnectClient();
+      } else {
+          LOG_ERROR("Failed to accept robot connection");
       }
-      if (requestRead())
-      {
-        LOG_INFO("Robot requested program");
-        sendProgram();
-      }
-      server_.disconnectClient();
     }
+    LOG_INFO("Script sender closed");
   }
 
   bool requestRead()

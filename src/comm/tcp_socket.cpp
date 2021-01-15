@@ -121,6 +121,8 @@ void TCPSocket::close()
   if (socket_fd_ >= 0)
   {
     state_ = SocketState::Closed;
+    ::shutdown(socket_fd_, SHUT_RDWR);  // without shutdown, socket may not be
+                                        // reusable at once for a reconnect
     ::close(socket_fd_);
     socket_fd_ = -1;
   }
