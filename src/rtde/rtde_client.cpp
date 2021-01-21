@@ -45,6 +45,12 @@ RTDEClient::RTDEClient(std::string robot_ip, comm::INotifier& notifier, const st
 {
 }
 
+RTDEClient::~RTDEClient()
+{
+  // Ensure pipeline to stop before any destruction happens
+  pipeline_.stop();
+}
+
 bool RTDEClient::init()
 {
   // A running pipeline is needed inside setup

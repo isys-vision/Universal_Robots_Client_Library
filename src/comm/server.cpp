@@ -90,8 +90,10 @@ bool URServer::accept()
   int retry = 0;
   while ((client_fd = ::accept(getSocketFD(), &addr, &addr_len)) == -1)
   {
+    if (errno == EINVAL)
+      return false;
     LOG_ERROR("Accepting socket connection failed. (errno: %d)", errno);
-    if (retry++ >= 5 || errno == EINVAL)
+    if (retry++ >= 5)
       return false;
   }
 

@@ -56,7 +56,6 @@ public:
     {
       script_thread_.join();
     }
-    LOG_ERROR("Stopping script sender finished");
   }
 
   /*!
