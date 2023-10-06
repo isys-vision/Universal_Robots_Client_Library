@@ -175,7 +175,6 @@ urcl::UrDriverLowBandwidth::UrDriverLowBandwidth(const std::string& robot_ip, co
   else
   {
     script_sender_.reset(new control::ScriptSender(script_sender_port, prog));
-    script_sender_->start();
     URCL_LOG_DEBUG("Created script sender");
   }
 
@@ -211,7 +210,7 @@ bool UrDriverLowBandwidth::writeKeepalive()
   if (reverse_interface_active_)
   {
     vector6d_t* fake = nullptr;
-    return reverse_interface_->write(fake, comm::ControlMode::MODE_IDLE);
+    return reverse_interface_active_ = reverse_interface_->write(fake, comm::ControlMode::MODE_IDLE);
   }
   return false;
 }
@@ -234,7 +233,7 @@ bool UrDriverLowBandwidth::stopControl()
 void UrDriverLowBandwidth::startWatchdog()
 {
   handle_program_state_(false);
-  reverse_interface_.reset(new control::ReverseInterface(reverse_port_));
+  reverse_interface_.reset(new control::ReverseInterface(reverse_port_, handle_program_state_));
   reverse_interface_active_ = true;
   URCL_LOG_DEBUG("Created reverse interface");
 
@@ -242,14 +241,9 @@ void UrDriverLowBandwidth::startWatchdog()
   {
     URCL_LOG_INFO("Robot ready to receive control commands.");
     handle_program_state_(true);
-    while (reverse_interface_active_ == true)
+    while (reverse_interface_active_)
     {
-      std::string keepalive = readKeepalive();
-
-      if (keepalive == std::string(""))
-      {
-        reverse_interface_active_ = false;
-      }
+      writeKeepalive();
     }
 
     URCL_LOG_INFO("Connection to robot dropped, waiting for new connection.");
@@ -260,7 +254,7 @@ void UrDriverLowBandwidth::startWatchdog()
     // TODO: It would probably make sense to keep the same instance alive for the complete runtime
     // instead of killing it all the time.
     reverse_interface_->~ReverseInterface();
-    reverse_interface_.reset(new control::ReverseInterface(reverse_port_));
+    reverse_interface_.reset(new control::ReverseInterface(reverse_port_, handle_program_state_));
     reverse_interface_active_ = true;
   }
 }
@@ -271,17 +265,6 @@ std::string UrDriverLowBandwidth::readScriptFile(const std::string& filename)
   std::string content((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
 
   return content;
-}
-std::string UrDriverLowBandwidth::readKeepalive()
-{
-  if (reverse_interface_active_)
-  {
-    return reverse_interface_->readKeepalive();
-  }
-  else
-  {
-    return std::string("");
-  }
 }
 
 void UrDriverLowBandwidth::checkCalibration(const std::string& checksum)

@@ -229,13 +229,13 @@ public:
 
 private:
   std::string readScriptFile(const std::string& filename);
-  std::string readKeepalive();
+  // std::string readKeepalive();
 
   int rtde_frequency_;
   comm::INotifier notifier_;
   std::unique_ptr<rtde_interface::RTDEClient> rtde_client_;
-  std::unique_ptr<comm::ReverseInterface> reverse_interface_;
-  std::unique_ptr<comm::ScriptSender> script_sender_;
+  std::unique_ptr<control::ReverseInterface> reverse_interface_;
+  std::unique_ptr<control::ScriptSender> script_sender_;
   std::unique_ptr<comm::URStream<primary_interface::PrimaryPackage>> primary_stream_;
   std::unique_ptr<comm::URStream<primary_interface::PrimaryPackage>> secondary_stream_;
 
