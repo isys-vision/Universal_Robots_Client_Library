@@ -227,6 +227,24 @@ public:
     return robot_version_;
   }
 
+  /*!
+   * \brief Writes a control message in trajectory forward mode.
+   *
+   * \param trajectory_action The action to be taken, such as starting a new trajectory
+   * \param point_number The number of points of a new trajectory to be sent
+   * \param robot_receive_timeout The read timeout configuration for the reverse socket running in the external
+   * control script on the robot. If you want to make the read function blocking then use RobotReceiveTimeout::off()
+   * function to create the RobotReceiveTimeout object
+   *
+   * \returns True on successful write.
+   */
+  bool
+  writeTrajectoryControlMessage(const control::TrajectoryControlMessage trajectory_action, const int point_number = 0,
+                                const RobotReceiveTimeout& robot_receive_timeout = RobotReceiveTimeout::millisec(200))
+  {
+    return reverse_interface_->writeTrajectoryControlMessage(trajectory_action, point_number, robot_receive_timeout);
+  };
+
 private:
   std::string readScriptFile(const std::string& filename);
   // std::string readKeepalive();
