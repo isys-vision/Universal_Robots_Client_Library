@@ -70,8 +70,8 @@ urcl::UrDriverLowBandwidth::UrDriverLowBandwidth(const std::string& robot_ip, co
     , handle_program_state_(handle_program_state)
     , robot_ip_(robot_ip)
 {
-  LOG_DEBUG("Initializing urdriver");
-  LOG_DEBUG("Initializing RTDE client");
+  URCL_LOG_DEBUG("Initializing urdriver");
+  URCL_LOG_DEBUG("Initializing RTDE client");
   rtde_client_.reset(new rtde_interface::RTDEClient(robot_ip_, notifier_, output_recipe_file, input_recipe_file));
 
   primary_stream_.reset(
@@ -79,7 +79,7 @@ urcl::UrDriverLowBandwidth::UrDriverLowBandwidth(const std::string& robot_ip, co
   secondary_stream_.reset(
       new comm::URStream<primary_interface::PrimaryPackage>(robot_ip_, urcl::primary_interface::UR_SECONDARY_PORT));
   secondary_stream_->connect();
-  LOG_INFO("Checking if calibration data matches connected robot.");
+  URCL_LOG_INFO("Checking if calibration data matches connected robot.");
   checkCalibration(calibration_checksum);
 
   non_blocking_read_ = non_blocking_read;
@@ -97,9 +97,9 @@ urcl::UrDriverLowBandwidth::UrDriverLowBandwidth(const std::string& robot_ip, co
   if (robot_version_.major < 5) servoj_time_ = 0.008;
   else servoj_time_ = 0.002;
 
-  LOG_INFO("UR control version: %i.%i.%i-%i", robot_version_.major, robot_version_.minor, robot_version_.bugfix, robot_version_.build);
-  LOG_INFO("Used parameters (UR script):");
-  LOG_INFO("  servoj_time %f, servoj_time_waiting %f, "
+  URCL_LOG_INFO("UR control version: %i.%i.%i-%i", robot_version_.major, robot_version_.minor, robot_version_.bugfix, robot_version_.build);
+  URCL_LOG_INFO("Used parameters (UR script):");
+  URCL_LOG_INFO("  servoj_time %f, servoj_time_waiting %f, "
            "servoj_gain: %f, servoj_lookahead_time: %f, max_joint_difference: %f, max_velocity: %f",
            servoj_time_, servoj_time_waiting_, servoj_gain_, servoj_lookahead_time_, max_joint_difference_, max_velocity_);
 
@@ -174,9 +174,9 @@ urcl::UrDriverLowBandwidth::UrDriverLowBandwidth(const std::string& robot_ip, co
   }
   else
   {
-    script_sender_.reset(new comm::ScriptSender(script_sender_port, prog));
+    script_sender_.reset(new control::ScriptSender(script_sender_port, prog));
     script_sender_->start();
-    LOG_DEBUG("Created script sender");
+    URCL_LOG_DEBUG("Created script sender");
   }
 
   reverse_port_ = reverse_port;
@@ -184,7 +184,7 @@ urcl::UrDriverLowBandwidth::UrDriverLowBandwidth(const std::string& robot_ip, co
   // watchdog (and keepalive) not required for low bandwidth driver at this point
 //  watchdog_thread_ = std::thread(&UrDriverLowBandwidth::startWatchdog, this);
 
-  LOG_DEBUG("Initialization done");
+  URCL_LOG_DEBUG("Initialization done");
 }
 
 std::unique_ptr<rtde_interface::DataPackage> urcl::UrDriverLowBandwidth::getDataPackage()
@@ -234,13 +234,13 @@ bool UrDriverLowBandwidth::stopControl()
 void UrDriverLowBandwidth::startWatchdog()
 {
   handle_program_state_(false);
-  reverse_interface_.reset(new comm::ReverseInterface(reverse_port_));
+  reverse_interface_.reset(new control::ReverseInterface(reverse_port_));
   reverse_interface_active_ = true;
-  LOG_DEBUG("Created reverse interface");
+  URCL_LOG_DEBUG("Created reverse interface");
 
   while (true)
   {
-    LOG_INFO("Robot ready to receive control commands.");
+    URCL_LOG_INFO("Robot ready to receive control commands.");
     handle_program_state_(true);
     while (reverse_interface_active_ == true)
     {
@@ -252,7 +252,7 @@ void UrDriverLowBandwidth::startWatchdog()
       }
     }
 
-    LOG_INFO("Connection to robot dropped, waiting for new connection.");
+    URCL_LOG_INFO("Connection to robot dropped, waiting for new connection.");
     handle_program_state_(false);
     // We explicitly call the destructor here, as unique_ptr.reset() creates a new object before
     // replacing the pointer and destroying the old object. This will result in a resource conflict
@@ -260,7 +260,7 @@ void UrDriverLowBandwidth::startWatchdog()
     // TODO: It would probably make sense to keep the same instance alive for the complete runtime
     // instead of killing it all the time.
     reverse_interface_->~ReverseInterface();
-    reverse_interface_.reset(new comm::ReverseInterface(reverse_port_));
+    reverse_interface_.reset(new control::ReverseInterface(reverse_port_));
     reverse_interface_active_ = true;
   }
 }
@@ -305,7 +305,7 @@ void UrDriverLowBandwidth::checkCalibration(const std::string& checksum)
   {
     std::this_thread::sleep_for(std::chrono::seconds(1));
   }
-  LOG_DEBUG("Got calibration information from robot.");
+  URCL_LOG_DEBUG("Got calibration information from robot.");
 }
 
 rtde_interface::RTDEWriter& UrDriverLowBandwidth::getRTDEWriter()
@@ -332,10 +332,10 @@ bool UrDriverLowBandwidth::sendScript(const std::string& program)
 
   if (secondary_stream_->write(data, len, written))
   {
-    LOG_DEBUG("Sent program to robot:\n%s", program_with_newline.c_str());
+    URCL_LOG_DEBUG("Sent program to robot:\n%s", program_with_newline.c_str());
     return true;
   }
-  LOG_ERROR("Could not send program to robot");
+  URCL_LOG_ERROR("Could not send program to robot");
   return false;
 }
 
@@ -347,7 +347,7 @@ bool UrDriverLowBandwidth::sendRobotProgram()
   }
   else
   {
-    LOG_ERROR("Tried to send robot program directly while not in headless mode");
+    URCL_LOG_ERROR("Tried to send robot program directly while not in headless mode");
     return false;
   }
 }

@@ -30,8 +30,8 @@
 #include <functional>
 
 #include "ur_client_library/rtde/rtde_client.h"
-#include "ur_client_library/comm/reverse_interface.h"
-#include "ur_client_library/comm/script_sender.h"
+#include "ur_client_library/control/reverse_interface.h"
+#include "ur_client_library/control/script_sender.h"
 #include "ur_client_library/ur/tool_communication.h"
 #include "ur_client_library/ur/version_information.h"
 #include "ur_client_library/primary/robot_message/version_message.h"
