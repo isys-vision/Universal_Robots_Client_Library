@@ -246,6 +246,14 @@ public:
   };
 
   /*!
+   * \brief Zero the force torque sensor (only availbe on e-Series). Note:  It requires the external control script to
+   * be running or the robot to be in headless mode
+   *
+   * \returns True on successful write.
+   */
+  bool zeroFTSensor();
+
+  /*!
    * \brief Set the payload mass and center of gravity. Note: It requires the external control script to be running or
    * the robot to be in headless mode.
    *

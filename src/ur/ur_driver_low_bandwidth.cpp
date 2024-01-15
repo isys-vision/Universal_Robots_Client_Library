@@ -335,6 +335,27 @@ bool UrDriverLowBandwidth::sendRobotProgram()
   }
 }
 
+bool UrDriverLowBandwidth::zeroFTSensor()
+{
+  if (getVersion().major < 5)
+  {
+    std::stringstream ss;
+    ss << "Zeroing the Force-Torque sensor is only available for e-Series robots (Major version >= 5). This robot's "
+          "version is "
+       << getVersion();
+    URCL_LOG_ERROR(ss.str().c_str());
+    return false;
+  }
+  else
+  {
+    URCL_LOG_WARN("Script command interface is not  available for low bandwidth driver. Falling back to sending plain script code. This will "
+                  "only work, if the robot is in remote_control mode.");
+    std::stringstream cmd;
+    cmd << "sec tareSetup():" << std::endl << " zero_ftsensor()" << std::endl << "end";
+    return sendScript(cmd.str());
+  }
+}
+
 bool UrDriverLowBandwidth::setPayload(const float mass, const vector3d_t& cog)
 {
   URCL_LOG_WARN("Script command interface is not available for low bandwidth driver. Falling back to sending plain script code. On e-Series "
