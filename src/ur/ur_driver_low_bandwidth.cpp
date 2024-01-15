@@ -335,6 +335,18 @@ bool UrDriverLowBandwidth::sendRobotProgram()
   }
 }
 
+bool UrDriverLowBandwidth::setPayload(const float mass, const vector3d_t& cog)
+{
+  URCL_LOG_WARN("Script command interface is not available for low bandwidth driver. Falling back to sending plain script code. On e-Series "
+                "robots this will only work, if the robot is in remote_control mode.");
+  std::stringstream cmd;
+  cmd.imbue(std::locale::classic());  // Make sure, decimal divider is actually '.'
+  cmd << "sec setup():" << std::endl
+      << " set_payload(" << mass << ", [" << cog[0] << ", " << cog[1] << ", " << cog[2] << "])" << std::endl
+      << "end";
+  return sendScript(cmd.str());
+}
+
 bool UrDriverLowBandwidth::setToolVoltage(const ToolVoltage voltage)
 {
   // Test that the tool voltage is either 0, 12 or 24.
