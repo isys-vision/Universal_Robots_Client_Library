@@ -245,6 +245,16 @@ public:
     return reverse_interface_->writeTrajectoryControlMessage(trajectory_action, point_number, robot_receive_timeout);
   };
 
+  /*!
+   * \brief Set the tool voltage. Note: It requires the external control script to be running or the robot to be in
+   * headless mode.
+   *
+   * \param voltage tool voltage.
+   *
+   * \returns True on successful write.
+   */
+  bool setToolVoltage(const ToolVoltage voltage);
+
 private:
   std::string readScriptFile(const std::string& filename);
   // std::string readKeepalive();

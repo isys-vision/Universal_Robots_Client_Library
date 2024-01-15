@@ -334,4 +334,30 @@ bool UrDriverLowBandwidth::sendRobotProgram()
     return false;
   }
 }
+
+bool UrDriverLowBandwidth::setToolVoltage(const ToolVoltage voltage)
+{
+  // Test that the tool voltage is either 0, 12 or 24.
+  switch (voltage)
+  {
+    case ToolVoltage::OFF:
+      break;
+    case ToolVoltage::_12V:
+      break;
+    case ToolVoltage::_24V:
+      break;
+    default:
+      std::stringstream ss;
+      ss << "The tool voltage should be 0, 12 or 24. The tool voltage is " << toUnderlying(voltage);
+      URCL_LOG_ERROR(ss.str().c_str());
+      return false;
+  }
+
+  URCL_LOG_WARN("Script command interface is not available for low bandwidth driver. Falling back to sending plain script code. On e-Series "
+                "robots this will only work, if the robot is in remote_control mode.");
+  std::stringstream cmd;
+  cmd << "sec setup():" << std::endl << " set_tool_voltage(" << toUnderlying(voltage) << ")" << std::endl << "end";
+  return sendScript(cmd.str());
+}
+
 }  // namespace urcl
