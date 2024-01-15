@@ -55,8 +55,8 @@ static const std::string MAX_JOINT_DIFFERENCE("{{MAX_JOINT_DIFFERENCE}}");
 urcl::UrDriverLowBandwidth::UrDriverLowBandwidth(const std::string& robot_ip, const std::string& script_file,
                               const std::string& output_recipe_file, const std::string& input_recipe_file,
                               std::function<void(bool)> handle_program_state, bool headless_mode,
-                              std::unique_ptr<ToolCommSetup> tool_comm_setup, const std::string& calibration_checksum,
-                              const uint32_t reverse_port, const uint32_t script_sender_port, double servoj_time_waiting, int servoj_gain,
+                              std::unique_ptr<ToolCommSetup> tool_comm_setup, const uint32_t reverse_port,
+                              const uint32_t script_sender_port, double servoj_time_waiting, int servoj_gain,
                               double servoj_lookahead_time, bool non_blocking_read,
                               double max_joint_difference, double max_velocity)
     : servoj_time_(0.002)
@@ -79,8 +79,6 @@ urcl::UrDriverLowBandwidth::UrDriverLowBandwidth(const std::string& robot_ip, co
   secondary_stream_.reset(
       new comm::URStream<primary_interface::PrimaryPackage>(robot_ip_, urcl::primary_interface::UR_SECONDARY_PORT));
   secondary_stream_->connect();
-  URCL_LOG_INFO("Checking if calibration data matches connected robot.");
-  checkCalibration(calibration_checksum);
 
   non_blocking_read_ = non_blocking_read;
   get_packet_timeout_ = non_blocking_read_ ? 0 : 100;
@@ -186,6 +184,36 @@ urcl::UrDriverLowBandwidth::UrDriverLowBandwidth(const std::string& robot_ip, co
   URCL_LOG_DEBUG("Initialization done");
 }
 
+urcl::UrDriverLowBandwidth::UrDriverLowBandwidth(const std::string& robot_ip, const std::string& script_file,
+                              const std::string& output_recipe_file, const std::string& input_recipe_file,
+                              std::function<void(bool)> handle_program_state, bool headless_mode,
+                              std::unique_ptr<ToolCommSetup> tool_comm_setup, const std::string& calibration_checksum,
+                              const uint32_t reverse_port, const uint32_t script_sender_port, double servoj_time_waiting, int servoj_gain,
+                              double servoj_lookahead_time, bool non_blocking_read,
+                              double max_joint_difference, double max_velocity)
+: UrDriverLowBandwidth(robot_ip, script_file, output_recipe_file, input_recipe_file, handle_program_state, headless_mode,
+             std::move(tool_comm_setup), reverse_port, script_sender_port, servoj_time_waiting, servoj_gain, servoj_lookahead_time,
+             non_blocking_read, max_joint_difference, max_velocity)
+{
+  URCL_LOG_WARN("DEPRECATION NOTICE: Passing the calibration_checksum to the UrDriver's constructor has been "
+                "deprecated. Instead, use the checkCalibration(calibration_checksum) function separately. This "
+                "notice is for application developers using this library. If you are only using an application using "
+                "this library, you can ignore this message.");
+  if (checkCalibration(calibration_checksum))
+  {
+    URCL_LOG_INFO("Calibration checked successfully.");
+  }
+  else
+  {
+    URCL_LOG_ERROR("The calibration parameters of the connected robot don't match the ones from the given kinematics "
+                   "config file. Please be aware that this can lead to critical inaccuracies of tcp positions. Use "
+                   "the ur_calibration tool to extract the correct calibration from the robot and pass that into the "
+                   "description. See "
+                   "[https://github.com/UniversalRobots/Universal_Robots_ROS_Driver#extract-calibration-information] "
+                   "for details.");
+  }
+}
+
 std::unique_ptr<rtde_interface::DataPackage> urcl::UrDriverLowBandwidth::getDataPackage()
 {
   // This can take one of two values, 0ms or 100ms. The large timeout is for when the robot is commanding the control
@@ -267,7 +295,7 @@ std::string UrDriverLowBandwidth::readScriptFile(const std::string& filename)
   return content;
 }
 
-void UrDriverLowBandwidth::checkCalibration(const std::string& checksum)
+bool UrDriverLowBandwidth::checkCalibration(const std::string& checksum)
 {
   if (primary_stream_ == nullptr)
   {
@@ -289,6 +317,7 @@ void UrDriverLowBandwidth::checkCalibration(const std::string& checksum)
     std::this_thread::sleep_for(std::chrono::seconds(1));
   }
   URCL_LOG_DEBUG("Got calibration information from robot.");
+  return consumer.checkSuccessful();
 }
 
 rtde_interface::RTDEWriter& UrDriverLowBandwidth::getRTDEWriter()

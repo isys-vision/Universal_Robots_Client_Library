@@ -50,6 +50,34 @@ class UrDriverLowBandwidth
 public:
   /*!
    * \brief Constructs a new UrDriver object.
+   * \param robot_ip IP-address under which the robot is reachable.
+   * \param script_file URScript file that should be sent to the robot.
+   * \param output_recipe_file Filename where the output recipe is stored in.
+   * \param input_recipe_file Filename where the input recipe is stored in.
+   * \param handle_program_state Function handle to a callback on program state changes. For this to
+   * work, the URScript program will have to send keepalive signals to the \p reverse_port. I no
+   * keepalive signal can be read, program state will be false.
+   * \param headless_mode Parameter to control if the driver should be started in headless mode.
+   * \param tool_comm_setup Configuration for using the tool communication.
+   * \param reverse_port Port that will be opened by the driver to allow direct communication between the driver
+   * and the robot controller.
+   * \param script_sending_port The driver will offer an interface to receive the program's URScript on this port. If
+   * the robot cannot connect to this port, `External Control` will stop immediately.
+   * \param non_blocking_read Enable non-blocking mode for read (useful when used with combined_robot_hw)
+   * \param servoj_gain Proportional gain for arm joints following target position, range [100,2000]
+   * \param servoj_lookahead_time Time [S], range [0.03,0.2] smoothens the trajectory with this lookahead time
+   * \param servoj_time_waiting
+   * \param max_joint_difference
+   * \param max_velocity
+   */
+  UrDriverLowBandwidth(const std::string& robot_ip, const std::string& script_file, const std::string& output_recipe_file,
+           const std::string& input_recipe_file, std::function<void(bool)> handle_program_state, bool headless_mode,
+           std::unique_ptr<ToolCommSetup> tool_comm_setup, const uint32_t reverse_port = 50001, const uint32_t script_sender_port = 50002,
+           double servoj_time_waiting = 0.001, int servoj_gain = 2000, double servoj_lookahead_time = 0.03, bool non_blocking_read = false,
+           double max_joint_difference = 0.0001, double max_velocity = 10.0);
+
+  /*!
+   * \brief Constructs a new UrDriver object.
    * Upon initialization this class will check the calibration checksum reported from the robot and
    * compare it to a checksum given by the user. If the checksums don't match, the driver will output
    * an error message. This is critical if you want to do forward or inverse kinematics based on the
@@ -189,8 +217,11 @@ public:
    * \brief Checks if the kinematics information in the used model fits the actual robot.
    *
    * \param checksum Hash of the used kinematics information
+
+   * \returns True if the robot's calibration checksum matches the one given to the checker. False
+   * if it doesn't match or the check was not yet performed.
    */
-  void checkCalibration(const std::string& checksum);
+  bool checkCalibration(const std::string& checksum);
 
   /*!
    * \brief Getter for the RTDE writer used to write to the robot's RTDE interface.
