@@ -111,6 +111,12 @@ struct UrDriverConfiguration
   double servoj_lookahead_time = 0.03;
 
   /*!
+   * \brief Time in seconds (real time) of internal active loop while the robot waits for new instructions in case of delays in communication.
+   * The smaller this value, the faster the robot restarts movement after a delay (but more stress is put on the URControl processor). Default value is 0.001 (1000 Hz check frequency)
+   */
+  double servoj_time_waiting = 0.001;
+
+  /*!
    * \brief Number of attempts to reconnect to sockets such as the primary or RTDE interface.
    *
    * If set to 0, the driver will try to reconnect indefinitely.
@@ -135,6 +141,11 @@ struct UrDriverConfiguration
   std::chrono::milliseconds rtde_initialization_timeout = std::chrono::seconds(5);
 
   bool non_blocking_read = false;
+
+  /*!
+   * \brief Maximum allowed difference between target and actual joint positions
+   */
+  double max_joint_difference = 0.0001;
 
   // TODO: Remove on 2027-05
   // The following parameters are considered deprecated and will be removed in May 2027.
@@ -208,12 +219,15 @@ public:
    * \param non_blocking_read Enable non-blocking mode for read (useful when used with combined_robot_hw)
    * \param servoj_gain Proportional gain for arm joints following target position, range [100,2000]
    * \param servoj_lookahead_time Time [S], range [0.03,0.2] smoothens the trajectory with this lookahead time
+   * \param servoj_time_waiting Time in seconds (real time) of internal active loop while the robot waits for new instructions in case of delays in communication.
+   * The smaller this value, the faster the robot restarts movement after a delay (but more stress is put on the URControl processor). Default value is 0.001 (1000 Hz check frequency)
    * \param reverse_ip IP address that the reverse_port will get bound to. If not specified, the IP
    * address of the interface that is used for connecting to the robot's RTDE port will be used.
    * \param trajectory_port Port used for sending trajectory points to the robot in case of
    * trajectory forwarding.
    * \param script_command_port Port used for forwarding script commands to the robot. The script commands will be
    * executed locally on the robot.
+   * \param max_joint_difference Maximum allowed difference between target and actual joint positions
    */
   // Called sigA in tests
   [[deprecated("Initializing a UrDriver object with an argument list is deprecated. Please use UrDriver(const "
@@ -221,9 +235,9 @@ public:
   UrDriver(const std::string& robot_ip, const std::string& script_file, const std::string& output_recipe_file,
            const std::string& input_recipe_file, std::function<void(bool)> handle_program_state, bool headless_mode,
            std::unique_ptr<ToolCommSetup> tool_comm_setup, const uint32_t reverse_port = 50001,
-           const uint32_t script_sender_port = 50002, int servoj_gain = 2000, double servoj_lookahead_time = 0.03,
+           const uint32_t script_sender_port = 50002, int servoj_gain = 2000, double servoj_lookahead_time = 0.03, double servoj_time_waiting = 0.001,
            bool non_blocking_read = false, const std::string& reverse_ip = "", const uint32_t trajectory_port = 50003,
-           const uint32_t script_command_port = 50004)
+           const uint32_t script_command_port = 50004, double max_joint_difference = 0.0001)
   {
     UrDriverConfiguration config;
     config.robot_ip = robot_ip;
@@ -237,10 +251,12 @@ public:
     config.script_sender_port = script_sender_port;
     config.servoj_gain = servoj_gain;
     config.servoj_lookahead_time = servoj_lookahead_time;
+    config.servoj_time_waiting = servoj_time_waiting;
     config.non_blocking_read = non_blocking_read;
     config.reverse_ip = reverse_ip;
     config.trajectory_port = trajectory_port;
     config.script_command_port = script_command_port;
+    config.max_joint_difference = max_joint_difference;
     init(config);
   }
 
@@ -267,12 +283,15 @@ public:
    * \param non_blocking_read Enable non-blocking mode for read (useful when used with combined_robot_hw)
    * \param servoj_gain Proportional gain for arm joints following target position, range [100,2000]
    * \param servoj_lookahead_time Time [S], range [0.03,0.2] smoothens the trajectory with this lookahead time
+   * \param servoj_time_waiting Time in seconds (real time) of internal active loop while the robot waits for new instructions in case of delays in communication.
+   * The smaller this value, the faster the robot restarts movement after a delay (but more stress is put on the URControl processor). Default value is 0.001 (1000 Hz check frequency)
    * \param reverse_ip IP address that the reverse_port will get bound to. If not specified, the IP
    * address of the interface that is used for connecting to the robot's RTDE port will be used.
    * \param trajectory_port Port used for sending trajectory points to the robot in case of
    * trajectory forwarding.
    * \param script_command_port Port used for forwarding script commands to the robot. The script commands will be
    * executed locally on the robot.
+   * \param max_joint_difference Maximum allowed difference between target and actual joint positions
    * \param force_mode_damping The damping parameter used when the robot is in force mode, range [0,1]
    * \param force_mode_gain_scaling Scales the gain used when the robot is in force mode, range [0,2] (only e-series)
    */
@@ -282,8 +301,8 @@ public:
   UrDriver(const std::string& robot_ip, const std::string& script_file, const std::string& output_recipe_file,
            const std::string& input_recipe_file, std::function<void(bool)> handle_program_state, bool headless_mode,
            std::unique_ptr<ToolCommSetup> tool_comm_setup, const uint32_t reverse_port,
-           const uint32_t script_sender_port, int servoj_gain, double servoj_lookahead_time, bool non_blocking_read,
-           const std::string& reverse_ip, const uint32_t trajectory_port, const uint32_t script_command_port,
+           const uint32_t script_sender_port, int servoj_gain, double servoj_lookahead_time, double servoj_time_waiting, bool non_blocking_read,
+           const std::string& reverse_ip, const uint32_t trajectory_port, const uint32_t script_command_port, double max_joint_difference,
            double force_mode_damping, double force_mode_gain_scaling = 0.5)
   {
     UrDriverConfiguration config;
@@ -298,10 +317,12 @@ public:
     config.script_sender_port = script_sender_port;
     config.servoj_gain = servoj_gain;
     config.servoj_lookahead_time = servoj_lookahead_time;
+    config.servoj_time_waiting = servoj_time_waiting;
     config.non_blocking_read = non_blocking_read;
     config.reverse_ip = reverse_ip;
     config.trajectory_port = trajectory_port;
     config.script_command_port = script_command_port;
+    config.max_joint_difference = max_joint_difference;
     config.force_mode_damping = force_mode_damping;
     config.force_mode_gain_scaling = force_mode_gain_scaling;
     init(config);
@@ -331,12 +352,15 @@ public:
    * \param non_blocking_read Enable non-blocking mode for read (useful when used with combined_robot_hw)
    * \param servoj_gain Proportional gain for arm joints following target position, range [100,2000]
    * \param servoj_lookahead_time Time [S], range [0.03,0.2] smoothens the trajectory with this lookahead time
+   * \param servoj_time_waiting Time in seconds (real time) of internal active loop while the robot waits for new instructions in case of delays in communication.
+   * The smaller this value, the faster the robot restarts movement after a delay (but more stress is put on the URControl processor). Default value is 0.001 (1000 Hz check frequency)
    * \param reverse_ip IP address that the reverse_port will get bound to. If not specified, the IP
    * address of the interface that is used for connecting to the robot's RTDE port will be used.
    * \param trajectory_port Port used for sending trajectory points to the robot in case of
    * trajectory forwarding.
    * \param script_command_port Port used for forwarding script commands to the robot. The script commands will be
    * executed locally on the robot.
+   * \param max_joint_difference Maximum allowed difference between target and actual joint positions
    * \param force_mode_damping The damping parameter used when the robot is in force mode, range [0,1]
    * \param force_mode_gain_scaling Scales the gain used when the robot is in force mode, range [0,2] (only e-series)
    */
@@ -347,8 +371,8 @@ public:
            const std::string& input_recipe_file, std::function<void(bool)> handle_program_state, bool headless_mode,
            std::unique_ptr<ToolCommSetup> tool_comm_setup, const std::string& calibration_checksum,
            const uint32_t reverse_port = 50001, const uint32_t script_sender_port = 50002, int servoj_gain = 2000,
-           double servoj_lookahead_time = 0.03, bool non_blocking_read = false, const std::string& reverse_ip = "",
-           const uint32_t trajectory_port = 50003, const uint32_t script_command_port = 50004,
+           double servoj_lookahead_time = 0.03, double servoj_time_waiting = 0.001, bool non_blocking_read = false, const std::string& reverse_ip = "",
+           const uint32_t trajectory_port = 50003, const uint32_t script_command_port = 50004, double max_joint_difference = 0.0001,
            double force_mode_damping = 0.025, double force_mode_gain_scaling = 0.5)
   {
     UrDriverConfiguration config;
@@ -364,10 +388,12 @@ public:
     config.script_sender_port = script_sender_port;
     config.servoj_gain = servoj_gain;
     config.servoj_lookahead_time = servoj_lookahead_time;
+    config.servoj_time_waiting = servoj_time_waiting;
     config.non_blocking_read = non_blocking_read;
     config.reverse_ip = reverse_ip;
     config.trajectory_port = trajectory_port;
     config.script_command_port = script_command_port;
+    config.max_joint_difference = max_joint_difference;
     config.force_mode_damping = force_mode_damping;
     config.force_mode_gain_scaling = force_mode_gain_scaling;
     init(config);
@@ -395,12 +421,15 @@ public:
    * \param non_blocking_read Enable non-blocking mode for read (useful when used with combined_robot_hw)
    * \param servoj_gain Proportional gain for arm joints following target position, range [100,2000]
    * \param servoj_lookahead_time Time [S], range [0.03,0.2] smoothens the trajectory with this lookahead time
+   * \param servoj_time_waiting Time in seconds (real time) of internal active loop while the robot waits for new instructions in case of delays in communication.
+   * The smaller this value, the faster the robot restarts movement after a delay (but more stress is put on the URControl processor). Default value is 0.001 (1000 Hz check frequency)
    * \param reverse_ip IP address that the reverse_port will get bound to. If not specified, the IP
    * address of the interface that is used for connecting to the robot's RTDE port will be used.
    * \param trajectory_port Port used for sending trajectory points to the robot in case of
    * trajectory forwarding.
    * \param script_command_port Port used for forwarding script commands to the robot. The script commands will be
    * executed locally on the robot.
+   * \param max_joint_difference Maximum allowed difference between target and actual joint positions
    * \param force_mode_damping The damping parameter used when the robot is in force mode, range [0,1]
    * \param force_mode_gain_scaling Scales the gain used when the robot is in force mode, range [0,2] (only e-series)
    */
@@ -410,9 +439,9 @@ public:
   UrDriver(const std::string& robot_ip, const std::string& script_file, const std::string& output_recipe_file,
            const std::string& input_recipe_file, std::function<void(bool)> handle_program_state, bool headless_mode,
            const std::string& calibration_checksum = "", const uint32_t reverse_port = 50001,
-           const uint32_t script_sender_port = 50002, int servoj_gain = 2000, double servoj_lookahead_time = 0.03,
+           const uint32_t script_sender_port = 50002, int servoj_gain = 2000, double servoj_lookahead_time = 0.03, double servoj_time_waiting = 0.001,
            bool non_blocking_read = false, const std::string& reverse_ip = "", const uint32_t trajectory_port = 50003,
-           const uint32_t script_command_port = 50004, double force_mode_damping = 0.025,
+           const uint32_t script_command_port = 50004, double max_joint_difference = 0.0001, double force_mode_damping = 0.025,
            double force_mode_gain_scaling = 0.5)
   {
     UrDriverConfiguration config;
@@ -427,10 +456,12 @@ public:
     config.script_sender_port = script_sender_port;
     config.servoj_gain = servoj_gain;
     config.servoj_lookahead_time = servoj_lookahead_time;
+    config.servoj_time_waiting = servoj_time_waiting;
     config.non_blocking_read = non_blocking_read;
     config.reverse_ip = reverse_ip;
     config.trajectory_port = trajectory_port;
     config.script_command_port = script_command_port;
+    config.max_joint_difference = max_joint_difference;
     config.force_mode_damping = force_mode_damping;
     config.force_mode_gain_scaling = force_mode_gain_scaling;
     init(config);
