@@ -44,25 +44,31 @@ namespace urcl
 static const std::string BEGIN_REPLACE("{{BEGIN_REPLACE}}");
 static const std::string JOINT_STATE_REPLACE("{{JOINT_STATE_REPLACE}}");
 static const std::string TIME_REPLACE("{{TIME_REPLACE}}");
-static const std::string SERVO_J_REPLACE("{{SERVO_J_REPLACE}}");
+static const std::string SERVOJ_TIME_WAITING("{{SERVOJ_TIME_WAITING}}");
+static const std::string SERVOJ_GAIN("{{SERVOJ_GAIN}}");
+static const std::string SERVOJ_LOOKAHEAD_TIME("{{SERVOJ_LOOKAHEAD_TIME}}");
 static const std::string SERVER_IP_REPLACE("{{SERVER_IP_REPLACE}}");
 static const std::string SERVER_PORT_REPLACE("{{SERVER_PORT_REPLACE}}");
 static const std::string TRAJECTORY_PORT_REPLACE("{{TRAJECTORY_SERVER_PORT_REPLACE}}");
 static const std::string SCRIPT_COMMAND_PORT_REPLACE("{{SCRIPT_COMMAND_SERVER_PORT_REPLACE}}");
 static const std::string FORCE_MODE_SET_DAMPING_REPLACE("{{FORCE_MODE_SET_DAMPING_REPLACE}}");
 static const std::string FORCE_MODE_SET_GAIN_SCALING_REPLACE("{{FORCE_MODE_SET_GAIN_SCALING_REPLACE}}");
+static const std::string MAX_JOINT_DIFFERENCE("{{MAX_JOINT_DIFFERENCE}}");
 
 urcl::UrDriver::UrDriver(const std::string& robot_ip, const std::string& script_file,
                          const std::string& output_recipe_file, const std::string& input_recipe_file,
                          std::function<void(bool)> handle_program_state, bool headless_mode,
                          std::unique_ptr<ToolCommSetup> tool_comm_setup, const uint32_t reverse_port,
-                         const uint32_t script_sender_port, int servoj_gain, double servoj_lookahead_time,
+                         const uint32_t script_sender_port, int servoj_gain, double servoj_lookahead_time, double servoj_time_waiting,
                          bool non_blocking_read, const std::string& reverse_ip, const uint32_t trajectory_port,
-                         const uint32_t script_command_port)
-  : servoj_gain_(servoj_gain)
+                         const uint32_t script_command_port, double max_joint_difference, double max_velocity)
+  : servoj_time_waiting_(servoj_time_waiting)
+  , servoj_gain_(servoj_gain)
   , servoj_lookahead_time_(servoj_lookahead_time)
   , handle_program_state_(handle_program_state)
   , robot_ip_(robot_ip)
+  , max_joint_difference_(max_joint_difference)
+  , max_velocity_ (max_velocity)
 {
   URCL_LOG_DEBUG("Initializing urdriver");
   URCL_LOG_DEBUG("Initializing RTDE client");
@@ -78,28 +84,26 @@ urcl::UrDriver::UrDriver(const std::string& robot_ip, const std::string& script_
   get_packet_timeout_ = non_blocking_read_ ? 0 : 100;
 
   initRTDE();
-  setupReverseInterface(reverse_port);
+  // Deactivate reverse interface for low bandwidth trajectory follower because it is blocking the port
+  //setupReverseInterface(reverse_port);
 
   // Figure out the ip automatically if the user didn't provide it
   std::string local_ip = reverse_ip.empty() ? rtde_client_->getIP() : reverse_ip;
 
   std::string prog = readScriptFile(script_file);
-  while (prog.find(JOINT_STATE_REPLACE) != std::string::npos)
+  while (prog.find(SERVOJ_TIME_WAITING) != std::string::npos)
   {
-    prog.replace(prog.find(JOINT_STATE_REPLACE), JOINT_STATE_REPLACE.length(),
-                 std::to_string(control::ReverseInterface::MULT_JOINTSTATE));
-  }
-  while (prog.find(TIME_REPLACE) != std::string::npos)
-  {
-    prog.replace(prog.find(TIME_REPLACE), TIME_REPLACE.length(),
-                 std::to_string(control::TrajectoryPointInterface::MULT_TIME));
+    prog.replace(prog.find(SERVOJ_TIME_WAITING), SERVOJ_TIME_WAITING.length(), std::to_string(servoj_time_waiting));
   }
 
-  std::ostringstream out;
-  out << "lookahead_time=" << servoj_lookahead_time_ << ", gain=" << servoj_gain_;
-  while (prog.find(SERVO_J_REPLACE) != std::string::npos)
+  while (prog.find(SERVOJ_GAIN) != std::string::npos)
   {
-    prog.replace(prog.find(SERVO_J_REPLACE), SERVO_J_REPLACE.length(), out.str());
+    prog.replace(prog.find(SERVOJ_GAIN), SERVOJ_GAIN.length(), std::to_string(servoj_gain));
+  }
+
+  while (prog.find(SERVOJ_LOOKAHEAD_TIME) != std::string::npos)
+  {
+    prog.replace(prog.find(SERVOJ_LOOKAHEAD_TIME), SERVOJ_LOOKAHEAD_TIME.length(), std::to_string(servoj_lookahead_time));
   }
 
   while (prog.find(SERVER_IP_REPLACE) != std::string::npos)
@@ -121,6 +125,11 @@ urcl::UrDriver::UrDriver(const std::string& robot_ip, const std::string& script_
   {
     prog.replace(prog.find(SCRIPT_COMMAND_PORT_REPLACE), SCRIPT_COMMAND_PORT_REPLACE.length(),
                  std::to_string(script_command_port));
+  }
+
+  while (prog.find(MAX_JOINT_DIFFERENCE) != std::string::npos)
+  {
+    prog.replace(prog.find(MAX_JOINT_DIFFERENCE), MAX_JOINT_DIFFERENCE.length(), std::to_string(max_joint_difference_));
   }
 
   robot_version_ = rtde_client_->getVersion();
@@ -163,7 +172,7 @@ urcl::UrDriver::UrDriver(const std::string& robot_ip, const std::string& script_
     URCL_LOG_DEBUG("Created script sender");
   }
 
-  trajectory_interface_.reset(new control::TrajectoryPointInterface(trajectory_port));
+  trajectory_interface_.reset(new control::TrajectoryPointInterface(trajectory_port)); // TODO: deactivate? probably not needed for low bandwidth controller
   script_command_interface_.reset(new control::ScriptCommandInterface(script_command_port));
 
   URCL_LOG_DEBUG("Initialization done");
@@ -173,12 +182,12 @@ urcl::UrDriver::UrDriver(const std::string& robot_ip, const std::string& script_
                          const std::string& output_recipe_file, const std::string& input_recipe_file,
                          std::function<void(bool)> handle_program_state, bool headless_mode,
                          std::unique_ptr<ToolCommSetup> tool_comm_setup, const uint32_t reverse_port,
-                         const uint32_t script_sender_port, int servoj_gain, double servoj_lookahead_time,
+                         const uint32_t script_sender_port, int servoj_gain, double servoj_lookahead_time, double servoj_time_waiting,
                          bool non_blocking_read, const std::string& reverse_ip, const uint32_t trajectory_port,
-                         const uint32_t script_command_port, double force_mode_damping, double force_mode_gain_scaling)
+                         const uint32_t script_command_port, double max_joint_difference, double max_velocity, double force_mode_damping, double force_mode_gain_scaling)
   : UrDriver(robot_ip, script_file, output_recipe_file, input_recipe_file, handle_program_state, headless_mode,
-             std::move(tool_comm_setup), reverse_port, script_sender_port, servoj_gain, servoj_lookahead_time,
-             non_blocking_read, reverse_ip, trajectory_port, script_command_port)
+             std::move(tool_comm_setup), reverse_port, script_sender_port, servoj_gain, servoj_lookahead_time, servoj_time_waiting,
+             non_blocking_read, reverse_ip, trajectory_port, script_command_port, max_joint_difference, max_velocity)
 {
   force_mode_damping_factor_ = force_mode_damping;
   force_mode_gain_scale_factor_ = force_mode_gain_scaling;
@@ -189,13 +198,13 @@ urcl::UrDriver::UrDriver(const std::string& robot_ip, const std::string& script_
                          std::function<void(bool)> handle_program_state, bool headless_mode,
                          std::unique_ptr<ToolCommSetup> tool_comm_setup, const std::string& calibration_checksum,
                          const uint32_t reverse_port, const uint32_t script_sender_port, int servoj_gain,
-                         double servoj_lookahead_time, bool non_blocking_read, const std::string& reverse_ip,
+                         double servoj_lookahead_time, double servoj_time_waiting, bool non_blocking_read, const std::string& reverse_ip,
                          const uint32_t trajectory_port, const uint32_t script_command_port, double force_mode_damping,
-                         double force_mode_gain_scaling)
+                         double force_mode_gain_scaling, double max_joint_difference, double max_velocity)
   : UrDriver(robot_ip, script_file, output_recipe_file, input_recipe_file, handle_program_state, headless_mode,
-             std::move(tool_comm_setup), reverse_port, script_sender_port, servoj_gain, servoj_lookahead_time,
+             std::move(tool_comm_setup), reverse_port, script_sender_port, servoj_gain, servoj_lookahead_time, servoj_time_waiting,
              non_blocking_read, reverse_ip, trajectory_port, script_command_port, force_mode_damping,
-             force_mode_gain_scaling)
+             force_mode_gain_scaling, max_joint_difference, max_velocity)
 {
   URCL_LOG_WARN("DEPRECATION NOTICE: Passing the calibration_checksum to the UrDriver's constructor has been "
                 "deprecated. Instead, use the checkCalibration(calibration_checksum) function separately. This "

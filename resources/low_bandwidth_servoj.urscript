@@ -1,14 +1,14 @@
 {{BEGIN_REPLACE}}
 
 global JOINT_NUM               = 6
-global SERVOJ_TIME             = {{SERVOJ_TIME}}
+global SERVOJ_TIME             = get_steptime() # older UR controllers use lower update rates, 0.002 for e-series and 0.008 for cb-series
 global SERVOJ_TIME_WAITING     = {{SERVOJ_TIME_WAITING}}
 global EMPTY_VALUES            = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 global SERVOJ_GAIN             = {{SERVOJ_GAIN}}
 global SERVOJ_LOOKAHEAD_TIME   = {{SERVOJ_LOOKAHEAD_TIME}}
 global CONNECTION_NAME         = "reverse_connection"
-global REVERSE_IP              = "{{REVERSE_IP}}"
-global REVERSE_PORT            = {{REVERSE_PORT}}
+global REVERSE_IP              = "{{SERVER_IP_REPLACE}}"
+global REVERSE_PORT            = {{SERVER_PORT_REPLACE}}
 global MAX_JOINT_DIFFERENCE    = {{MAX_JOINT_DIFFERENCE}}
 global g_position_previous = EMPTY_VALUES
 global g_position_target   = EMPTY_VALUES
