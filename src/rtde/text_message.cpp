@@ -49,7 +49,7 @@ bool TextMessage::parseWith(comm::BinParser& bp)
       bp.parseRemainder(message_);
     }
   } catch (const UrException& e) {
-    LOG_ERROR("Parsing text msg failed: <%s>", e.what());
+    URCL_LOG_ERROR("Parsing text msg failed: <%s>", e.what());
     return false;
   }
 
