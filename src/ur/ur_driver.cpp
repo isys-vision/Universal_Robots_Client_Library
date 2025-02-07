@@ -330,6 +330,9 @@ bool UrDriver::startForceMode(const vector6d_t& task_frame, const vector6uint32_
                               const vector6d_t& wrench, const unsigned int type, const vector6d_t& limits,
                               double damping_factor, double gain_scaling_factor)
 {
+  URCL_LOG_ERROR("Force mode is not implemented for the low bandwidth trajectory execution variant of the driver.");
+  return false;
+
   if (robot_version_.major < 5)
   {
     std::stringstream ss;
@@ -397,6 +400,9 @@ bool UrDriver::startForceMode(const vector6d_t& task_frame, const vector6uint32_
                               const vector6d_t& wrench, const unsigned int type, const vector6d_t& limits,
                               double damping_factor)
 {
+  URCL_LOG_ERROR("Force mode is not implemented for the low bandwidth trajectory execution variant of the driver.");
+  return false;
+
   if (robot_version_.major >= 5)
   {
     std::stringstream ss;
@@ -453,6 +459,9 @@ bool UrDriver::startForceMode(const vector6d_t& task_frame, const vector6uint32_
 bool UrDriver::startForceMode(const vector6d_t& task_frame, const vector6uint32_t& selection_vector,
                               const vector6d_t& wrench, const unsigned int type, const vector6d_t& limits)
 {
+  URCL_LOG_ERROR("Force mode is not implemented for the low bandwidth trajectory execution variant of the driver.");
+  return false;
+
   if (robot_version_.major < 5)
   {
     return startForceMode(task_frame, selection_vector, wrench, type, limits, force_mode_damping_factor_);
@@ -466,6 +475,9 @@ bool UrDriver::startForceMode(const vector6d_t& task_frame, const vector6uint32_
 
 bool UrDriver::endForceMode()
 {
+  URCL_LOG_ERROR("Force mode is not implemented for the low bandwidth trajectory execution variant of the driver.");
+  return false;
+
   if (script_command_interface_->clientConnected())
   {
     return script_command_interface_->endForceMode();
@@ -479,6 +491,9 @@ bool UrDriver::endForceMode()
 
 bool UrDriver::startToolContact()
 {
+  URCL_LOG_ERROR("Tool contact is not implemented for the low bandwidth trajectory execution variant of the driver.");
+  return false;
+
   if (getVersion().major < 5)
   {
     std::stringstream ss;
@@ -502,6 +517,9 @@ bool UrDriver::startToolContact()
 
 bool UrDriver::endToolContact()
 {
+  URCL_LOG_ERROR("Tool contact is not implemented for the low bandwidth trajectory execution variant of the driver.");
+  return false;
+
   if (getVersion().major < 5)
   {
     std::stringstream ss;
