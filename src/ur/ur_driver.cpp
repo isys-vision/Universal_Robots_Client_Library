@@ -91,6 +91,12 @@ urcl::UrDriver::UrDriver(const std::string& robot_ip, const std::string& script_
   std::string local_ip = reverse_ip.empty() ? rtde_client_->getIP() : reverse_ip;
 
   std::string prog = readScriptFile(script_file);
+  while (prog.find(JOINT_STATE_REPLACE) != std::string::npos)
+  {
+    prog.replace(prog.find(JOINT_STATE_REPLACE), JOINT_STATE_REPLACE.length(),
+                 std::to_string(control::ReverseInterface::MULT_JOINTSTATE));
+  }
+
   while (prog.find(SERVOJ_TIME_WAITING) != std::string::npos)
   {
     prog.replace(prog.find(SERVOJ_TIME_WAITING), SERVOJ_TIME_WAITING.length(), std::to_string(servoj_time_waiting));
@@ -366,6 +372,9 @@ bool UrDriver::startForceMode(const vector6d_t& task_frame, const vector6uint32_
                               const vector6d_t& wrench, const unsigned int type, const vector6d_t& limits,
                               double damping_factor, double gain_scaling_factor)
 {
+  URCL_LOG_ERROR("Force mode is not implemented for the low bandwidth trajectory execution variant of the driver.");
+  return false;
+
   if (robot_version_.major < 5)
   {
     std::stringstream ss;
@@ -433,6 +442,9 @@ bool UrDriver::startForceMode(const vector6d_t& task_frame, const vector6uint32_
                               const vector6d_t& wrench, const unsigned int type, const vector6d_t& limits,
                               double damping_factor)
 {
+  URCL_LOG_ERROR("Force mode is not implemented for the low bandwidth trajectory execution variant of the driver.");
+  return false;
+
   if (robot_version_.major >= 5)
   {
     std::stringstream ss;
@@ -489,6 +501,9 @@ bool UrDriver::startForceMode(const vector6d_t& task_frame, const vector6uint32_
 bool UrDriver::startForceMode(const vector6d_t& task_frame, const vector6uint32_t& selection_vector,
                               const vector6d_t& wrench, const unsigned int type, const vector6d_t& limits)
 {
+  URCL_LOG_ERROR("Force mode is not implemented for the low bandwidth trajectory execution variant of the driver.");
+  return false;
+
   if (robot_version_.major < 5)
   {
     return startForceMode(task_frame, selection_vector, wrench, type, limits, force_mode_damping_factor_);
@@ -502,6 +517,9 @@ bool UrDriver::startForceMode(const vector6d_t& task_frame, const vector6uint32_
 
 bool UrDriver::endForceMode()
 {
+  URCL_LOG_ERROR("Force mode is not implemented for the low bandwidth trajectory execution variant of the driver.");
+  return false;
+
   if (script_command_interface_->clientConnected())
   {
     return script_command_interface_->endForceMode();
@@ -515,6 +533,9 @@ bool UrDriver::endForceMode()
 
 bool UrDriver::startToolContact()
 {
+  URCL_LOG_ERROR("Tool contact is not implemented for the low bandwidth trajectory execution variant of the driver.");
+  return false;
+
   if (getVersion().major < 5)
   {
     std::stringstream ss;
@@ -538,6 +559,9 @@ bool UrDriver::startToolContact()
 
 bool UrDriver::endToolContact()
 {
+  URCL_LOG_ERROR("Tool contact is not implemented for the low bandwidth trajectory execution variant of the driver.");
+  return false;
+
   if (getVersion().major < 5)
   {
     std::stringstream ss;

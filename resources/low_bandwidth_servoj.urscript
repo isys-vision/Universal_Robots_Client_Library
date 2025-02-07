@@ -9,6 +9,7 @@ global SERVOJ_LOOKAHEAD_TIME   = {{SERVOJ_LOOKAHEAD_TIME}}
 global CONNECTION_NAME         = "reverse_connection"
 global REVERSE_IP              = "{{SERVER_IP_REPLACE}}"
 global REVERSE_PORT            = {{SERVER_PORT_REPLACE}}
+global SCRIPT_COMMAND_PORT     = {{SCRIPT_COMMAND_SERVER_PORT_REPLACE}}
 global MAX_JOINT_DIFFERENCE    = {{MAX_JOINT_DIFFERENCE}}
 global g_position_previous = EMPTY_VALUES
 global g_position_target   = EMPTY_VALUES
@@ -23,6 +24,16 @@ global g_received_waypoints_number  = -1
 global g_requested_waypoints_number = -1
 global g_stopping = False
 global g_trajectory_finished = False
+
+MULT_jointstate = {{JOINT_STATE_REPLACE}}
+ZERO_FTSENSOR = 0
+SET_PAYLOAD = 1
+SET_TOOL_VOLTAGE = 2
+START_FORCE_MODE = 3    # currently not implemented
+END_FORCE_MODE = 4      # currently not implemented
+START_TOOL_CONTACT = 5  # currently not implemented
+END_TOOL_CONTACT = 6    # currently not implemented
+SCRIPT_COMMAND_DATA_DIMENSION = 28
 
 def send_message(message):
     socket_send_string(message, CONNECTION_NAME)
@@ -193,13 +204,34 @@ thread sendingThread():
     join controlling_thread
 end
 
+# Thread to receive one shot script commands, the commands shouldn't be blocking
+thread script_commands():
+    while True:
+        raw_command = socket_read_binary_integer(SCRIPT_COMMAND_DATA_DIMENSION, "script_command_socket", 0)
+        if raw_command[0] > 0:
+            command = raw_command[1]
+            if command == ZERO_FTSENSOR:
+                zero_ftsensor()
+            elif command == SET_PAYLOAD:
+                mass = raw_command[2] / MULT_jointstate
+                cog = [raw_command[3] / MULT_jointstate, raw_command[4] / MULT_jointstate, raw_command[5] / MULT_jointstate]
+                set_payload(mass, cog)
+            elif command == SET_TOOL_VOLTAGE:
+                tool_voltage = raw_command[2] / MULT_jointstate
+                set_tool_voltage(tool_voltage)
+            end
+        end
+    end
+end
 
 ###### Main (Receiver) #######
 
 textmsg("Starting low bandwidth trajectory follower")
 socket_open(REVERSE_IP, REVERSE_PORT, CONNECTION_NAME)
+socket_open(REVERSE_IP, SCRIPT_COMMAND_PORT, "script_command_socket")
 
 local sending_thread = run sendingThread()
+local script_commands_thread = run script_commands()
 local l_requested_waypoints_number = -1
 local l_received_waypoints_number = -1
 
@@ -232,6 +264,9 @@ while True:
     sync()
 end
 join sending_thread
+kill script_commands_thread
+join script_commands_thread
 
 socket_close(CONNECTION_NAME)
+socket_close("script_command_socket")
 textmsg("Exiting the program")
