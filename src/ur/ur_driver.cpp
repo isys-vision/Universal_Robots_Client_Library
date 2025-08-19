@@ -47,12 +47,16 @@ static const std::string BEGIN_REPLACE("BEGIN_REPLACE");
 static const std::string JOINT_STATE_REPLACE("JOINT_STATE_REPLACE");
 static const std::string TIME_REPLACE("TIME_REPLACE");
 static const std::string SERVO_J_REPLACE("SERVO_J_REPLACE");
+static const std::string SERVOJ_TIME_WAITING("SERVOJ_TIME_WAITING");
+static const std::string SERVOJ_GAIN("SERVOJ_GAIN");
+static const std::string SERVOJ_LOOKAHEAD_TIME("SERVOJ_LOOKAHEAD_TIME");
 static const std::string SERVER_IP_REPLACE("SERVER_IP_REPLACE");
 static const std::string SERVER_PORT_REPLACE("SERVER_PORT_REPLACE");
 static const std::string TRAJECTORY_PORT_REPLACE("TRAJECTORY_SERVER_PORT_REPLACE");
 static const std::string SCRIPT_COMMAND_PORT_REPLACE("SCRIPT_COMMAND_SERVER_PORT_REPLACE");
 static const std::string FORCE_MODE_SET_DAMPING_REPLACE("FORCE_MODE_SET_DAMPING_REPLACE");
 static const std::string FORCE_MODE_SET_GAIN_SCALING_REPLACE("FORCE_MODE_SET_GAIN_SCALING_REPLACE");
+static const std::string MAX_JOINT_DIFFERENCE("MAX_JOINT_DIFFERENCE");
 
 UrDriver::~UrDriver()
 {
@@ -83,7 +87,8 @@ void UrDriver::init(const UrDriverConfiguration& config)
   get_packet_timeout_ = non_blocking_read_ ? 0 : 100;
 
   initRTDE();
-  setupReverseInterface(config.reverse_port);
+  // Deactivate reverse interface for low bandwidth trajectory follower because it is blocking the port
+  //setupReverseInterface(config.reverse_port);
 
   // Figure out the ip automatically if the user didn't provide it
   std::string local_ip = config.reverse_ip.empty() ? rtde_client_->getIP() : config.reverse_ip;
@@ -102,6 +107,10 @@ void UrDriver::init(const UrDriverConfiguration& config)
   std::ostringstream out;
   out << "lookahead_time=" << servoj_lookahead_time_ << ", gain=" << servoj_gain_;
   data[SERVO_J_REPLACE] = out.str();
+  data[SERVOJ_TIME_WAITING] = std::to_string(config.servoj_time_waiting);
+  data[SERVOJ_GAIN] = std::to_string(config.servoj_gain);
+  data[SERVOJ_LOOKAHEAD_TIME] = std::to_string(config.servoj_lookahead_time);
+  data[MAX_JOINT_DIFFERENCE] = std::to_string(config.max_joint_difference);
   data[SERVER_IP_REPLACE] = local_ip;
   data[SERVER_PORT_REPLACE] = std::to_string(config.reverse_port);
   data[TRAJECTORY_PORT_REPLACE] = std::to_string(config.trajectory_port);
@@ -321,6 +330,9 @@ bool UrDriver::startForceMode(const vector6d_t& task_frame, const vector6uint32_
                               const vector6d_t& wrench, const unsigned int type, const vector6d_t& limits,
                               double damping_factor, double gain_scaling_factor)
 {
+  URCL_LOG_ERROR("Force mode is not implemented for the low bandwidth trajectory execution variant of the driver.");
+  return false;
+
   if (robot_version_.major < 5)
   {
     std::stringstream ss;
@@ -388,6 +400,9 @@ bool UrDriver::startForceMode(const vector6d_t& task_frame, const vector6uint32_
                               const vector6d_t& wrench, const unsigned int type, const vector6d_t& limits,
                               double damping_factor)
 {
+  URCL_LOG_ERROR("Force mode is not implemented for the low bandwidth trajectory execution variant of the driver.");
+  return false;
+
   if (robot_version_.major >= 5)
   {
     std::stringstream ss;
@@ -444,6 +459,9 @@ bool UrDriver::startForceMode(const vector6d_t& task_frame, const vector6uint32_
 bool UrDriver::startForceMode(const vector6d_t& task_frame, const vector6uint32_t& selection_vector,
                               const vector6d_t& wrench, const unsigned int type, const vector6d_t& limits)
 {
+  URCL_LOG_ERROR("Force mode is not implemented for the low bandwidth trajectory execution variant of the driver.");
+  return false;
+
   if (robot_version_.major < 5)
   {
     return startForceMode(task_frame, selection_vector, wrench, type, limits, force_mode_damping_factor_);
@@ -457,6 +475,9 @@ bool UrDriver::startForceMode(const vector6d_t& task_frame, const vector6uint32_
 
 bool UrDriver::endForceMode()
 {
+  URCL_LOG_ERROR("Force mode is not implemented for the low bandwidth trajectory execution variant of the driver.");
+  return false;
+
   if (script_command_interface_->clientConnected())
   {
     return script_command_interface_->endForceMode();
@@ -470,6 +491,9 @@ bool UrDriver::endForceMode()
 
 bool UrDriver::startToolContact()
 {
+  URCL_LOG_ERROR("Tool contact is not implemented for the low bandwidth trajectory execution variant of the driver.");
+  return false;
+
   if (getVersion().major < 5)
   {
     std::stringstream ss;
@@ -493,6 +517,9 @@ bool UrDriver::startToolContact()
 
 bool UrDriver::endToolContact()
 {
+  URCL_LOG_ERROR("Tool contact is not implemented for the low bandwidth trajectory execution variant of the driver.");
+  return false;
+
   if (getVersion().major < 5)
   {
     std::stringstream ss;
